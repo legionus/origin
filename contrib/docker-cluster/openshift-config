@@ -1,0 +1,57 @@
+#!/bin/bash -efu
+
+if [ "$#" -lt 2 ]; then
+	cat <<-EOF
+	Usage: ${0##*/} <NUMBER>
+
+	NUMBER      The number of nodes in cluster.
+
+	EOF
+	exit 1
+fi
+
+NUM_NODES="$1"; shift
+
+MASTER_IP="$(openshift start --print-ip)"
+TMPDIR="${TMPDIR:-/tmp}"
+configdir="$TMPDIR/openshift-config"
+
+mkdir -vP -- "$configdir"
+cd "$configdir"
+
+openshift admin ca create-master-certs \
+	${FORCE:+--overwrite=true} \
+	--cert-dir="master" \
+	--master="$MASTER_IP" \
+	--hostnames="$MASTER_IP,127.0.0.1,localhost,kubernetes.default.local"
+
+for i in `seq 1 $NUM_NODES`; do
+	nodedir="node-$i"
+	port="$((10250 + $i - 1))"
+
+	if [ -d "$nodedir" ]; then
+		if [ -z "${FORCE-}" ]; then
+			printf 'Node "%s" already exists. Remove it first to recreate.\n' >&2
+			continue
+		fi
+		rm -vrf -- "$nodedir"
+	fi
+
+	oadm create-node-config \
+		--node-dir="$nodedir" \
+		--node="127.0.0.$i" \
+		--hostnames="127.0.0.$i,localhost" \
+		--listen="https://0.0.0.0:$port" \
+		--certificate-authority="master/ca.crt" \
+		--node-client-certificate-authority='master/ca.crt' \
+		--signer-cert="master/ca.crt" \
+		--signer-key="master/ca.key" \
+		--signer-serial="master/ca.serial.txt" \
+		--volume-dir='/tmp/openshift.local.volumes' \
+		#
+
+	# HOTFIX
+	sed -i \
+		-e "s,\\(bindAddress: .*\\):10250\$,\\1:$port," \
+		"$nodedir/node-config.yaml"
+done

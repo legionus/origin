@@ -1,0 +1,35 @@
+#!/bin/bash -e
+
+TMPDIR="${TMPDIR:-/tmp}"
+configdir="${TMPDIR}/openshift-config"
+
+if [ ! -d "$configdir" ]; then
+	printf 'ERROR: %s: Unable to find profile directory (run openshift-config.sh)\n' "$configdir" >&2
+	exit 1
+fi
+
+git_topdir="$(git rev-parse --show-toplevel)"
+git_topdir="$(readlink -ev -- "$git_topdir")"
+
+docker_args='-d'
+action="${0##*-}"
+
+case "$action" in
+	master|node)
+		;;
+	shell)
+		docker_args='--rm -it'
+		action='shell'
+		;;
+	*)
+		printf 'ERROR: Unknown action "%s"\n' "$action" >&2
+		exit 1
+		;;
+esac
+
+docker run --privileged --net=host $docker_args \
+	-v /:/host:ro \
+	-v "$git_topdir:/data/src/github.com/openshift/origin:ro" \
+	-v "$configdir:/opt/config/openshift.local.config:rw" \
+	--entrypoint="/openshift-$action" \
+	openshift/devhost:latest
