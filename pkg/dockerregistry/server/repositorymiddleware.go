@@ -135,13 +135,15 @@ func (r *repository) Blobs(ctx context.Context) distribution.BlobStore {
 	repo := repository(*r)
 	repo.ctx = ctx
 
-	quotaBS := &quotaRestrictedBlobStore{
+	lbs := &localBlobStore{
 		BlobStore: r.Repository.Blobs(ctx),
+		ctx:       ctx,
+		driver:    StorageDriver,
 		repo:      &repo,
 	}
 
-	bs := &localBlobStore{
-		BlobStore: quotaBS,
+	bs := &quotaRestrictedBlobStore{
+		BlobStore: lbs,
 		repo:      &repo,
 	}
 
