@@ -6,13 +6,13 @@ keywords = ["registry, on-prem, images, tags, repository, distribution, build, r
 +++
 <![end-metadata]-->
 
-# Building the registry source
+# Building the registry source
 
 ## Use-case
 
 This is useful if you intend to actively work on the registry.
 
-### Alternatives
+### Alternatives
 
 Most people should use the [official Registry docker image](https://hub.docker.com/r/library/registry/).
 
@@ -60,7 +60,7 @@ binary can then be run with the following:
 The registry can be run with the default config using the following
 incantation:
 
-    $ $GOPATH/bin/registry $GOPATH/src/github.com/docker/distribution/cmd/registry/config-example.yml
+    $ $GOPATH/bin/registry serve $GOPATH/src/github.com/docker/distribution/cmd/registry/config-example.yml
     INFO[0000] endpoint local-5003 disabled, skipping        app.id=34bbec38-a91a-494a-9a3f-b72f9010081f version=v2.0.0-alpha.1+unknown
     INFO[0000] endpoint local-8083 disabled, skipping        app.id=34bbec38-a91a-494a-9a3f-b72f9010081f version=v2.0.0-alpha.1+unknown
     INFO[0000] listening on :5000                            app.id=34bbec38-a91a-494a-9a3f-b72f9010081f version=v2.0.0-alpha.1+unknown
@@ -151,8 +151,3 @@ per package, without issue.
 
 Optional [build tags](http://golang.org/pkg/go/build/) can be provided using
 the environment variable `DOCKER_BUILDTAGS`.
-
-To enable the [Ceph RADOS storage driver](storage-drivers/rados.md)
-(librados-dev and librbd-dev will be required to build the bindings):
-
-    export DOCKER_BUILDTAGS='include_rados'
