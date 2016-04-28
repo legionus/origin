@@ -3053,6 +3053,7 @@ func autoConvert_api_Image_To_v1beta3_Image(in *imageapi.Image, out *imageapiv1b
 	} else {
 		out.DockerImageLayers = nil
 	}
+	out.DockerConfigImage = in.DockerConfigImage
 	return nil
 }
 
@@ -3233,6 +3234,7 @@ func autoConvert_v1beta3_Image_To_api_Image(in *imageapiv1beta3.Image, out *imag
 	} else {
 		out.DockerImageLayers = nil
 	}
+	out.DockerConfigImage = in.DockerConfigImage
 	return nil
 }
 
