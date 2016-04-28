@@ -14,7 +14,11 @@ auth:
   openshift:
     realm: openshift
 middleware:
+  registry:
+    - name: openshift
   repository:
     - name: openshift
       options:
         pullthrough: true
+  storage:
+    - name: openshift

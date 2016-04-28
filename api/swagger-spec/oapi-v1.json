@@ -20977,6 +20977,21 @@
        "$ref": "v1.ImageLayer"
       },
       "description": "DockerImageLayers represents the layers in the image. May not be set if the image does not define that data."
+     },
+     "dockerImageSignatures": {
+      "type": "array",
+      "items": {
+       "$ref": "v1.DockerImageSignature"
+      },
+      "description": "DockerImageSignatures provides the signatures on this JWS as opaque blobs."
+     },
+     "dockerImageManifestMediaType": {
+      "type": "string",
+      "description": "DockerImageManifestMediaType specifies the mediaType of manifest."
+     },
+     "dockerConfigImage": {
+      "type": "string",
+      "description": "DockerConfigImage is a JSON blob that the runtime uses to set up the container."
      }
     }
    },
@@ -20985,7 +21000,8 @@
     "description": "ImageLayer represents a single layer of the image. Some images may have multiple layers. Some may have none.",
     "required": [
      "name",
-     "size"
+     "size",
+     "mediaType"
     ],
     "properties": {
      "name": {
@@ -20996,8 +21012,16 @@
       "type": "integer",
       "format": "int64",
       "description": "Size of the layer as defined by the underlying store."
+     },
+     "mediaType": {
+      "type": "string",
+      "description": "MediaType of the referenced object."
      }
     }
+   },
+   "v1.DockerImageSignature": {
+    "id": "v1.DockerImageSignature",
+    "properties": {}
    },
    "v1.ImageStreamImage": {
     "id": "v1.ImageStreamImage",

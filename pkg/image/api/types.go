@@ -50,6 +50,12 @@ type Image struct {
 	DockerImageManifest string
 	// DockerImageLayers represents the layers in the image. May not be set if the image does not define that data.
 	DockerImageLayers []ImageLayer
+	// DockerImageSignatures provides the signatures on this JWS as opaque blobs.
+	DockerImageSignatures []DockerImageSignature
+	// DockerImageManifestMediaType specifies the mediaType of manifest.
+	DockerImageManifestMediaType string
+	// DockerConfigImage is a JSON blob that the runtime uses to set up the container.
+	DockerConfigImage string
 }
 
 // ImageLayer represents a single layer of the image. Some images may have multiple layers. Some may have none.
@@ -58,6 +64,8 @@ type ImageLayer struct {
 	Name string
 	// Size of the layer as defined by the underlying store.
 	Size int64
+	// MediaType of the referenced object.
+	MediaType string
 }
 
 // ImageStreamList is a list of ImageStream objects.
