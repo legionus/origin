@@ -20640,7 +20640,8 @@
     "description": "ImageLayer represents a single layer of the image. Some images may have multiple layers. Some may have none.",
     "required": [
      "name",
-     "size"
+     "size",
+     "MediaType"
     ],
     "properties": {
      "name": {
@@ -20651,6 +20652,9 @@
       "type": "integer",
       "format": "int64",
       "description": "Size of the layer as defined by the underlying store."
+     },
+     "MediaType": {
+      "type": "string"
      }
     }
    },

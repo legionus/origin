@@ -2031,6 +2031,7 @@ func deepCopy_api_Image(in imageapi.Image, out *imageapi.Image, c *conversion.Cl
 	} else {
 		out.DockerImageLayers = nil
 	}
+	out.DockerConfigImage = in.DockerConfigImage
 	return nil
 }
 
@@ -2077,6 +2078,7 @@ func deepCopy_api_ImageImportStatus(in imageapi.ImageImportStatus, out *imageapi
 func deepCopy_api_ImageLayer(in imageapi.ImageLayer, out *imageapi.ImageLayer, c *conversion.Cloner) error {
 	out.Name = in.Name
 	out.Size = in.Size
+	out.MediaType = in.MediaType
 	return nil
 }
 

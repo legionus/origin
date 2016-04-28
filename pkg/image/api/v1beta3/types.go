@@ -29,6 +29,8 @@ type Image struct {
 	DockerImageManifest string `json:"dockerImageManifest,omitempty"`
 	// DockerImageLayers represents the layers in the image. May not be set if the image does not define that data.
 	DockerImageLayers []ImageLayer `json:"dockerImageLayers"`
+	// DockerConfigImage is a JSON blob that the runtime uses to set up the container.
+	DockerConfigImage string `json:"dockerConfigImage,omitempty"`
 }
 
 // ImageLayer represents a single layer of the image. Some images may have multiple layers. Some may have none.
@@ -37,6 +39,8 @@ type ImageLayer struct {
 	Name string `json:"name"`
 	// Size of the layer as defined by the underlying store.
 	Size int64 `json:"size"`
+	// MediaType of the referenced object.
+	MediaType string `json:"mediaType"`
 }
 
 // ImageStreamList is a list of ImageStream objects.

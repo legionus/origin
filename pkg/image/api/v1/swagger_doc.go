@@ -26,6 +26,7 @@ var map_Image = map[string]string{
 	"dockerImageMetadataVersion": "DockerImageMetadataVersion conveys the version of the object, which if empty defaults to \"1.0\"",
 	"dockerImageManifest":        "DockerImageManifest is the raw JSON of the manifest",
 	"dockerImageLayers":          "DockerImageLayers represents the layers in the image. May not be set if the image does not define that data.",
+	"dockerConfigImage":          "DockerConfigImage is a JSON blob that the runtime uses to set up the container.",
 }
 
 func (Image) SwaggerDoc() map[string]string {
@@ -56,9 +57,10 @@ func (ImageImportStatus) SwaggerDoc() map[string]string {
 }
 
 var map_ImageLayer = map[string]string{
-	"":     "ImageLayer represents a single layer of the image. Some images may have multiple layers. Some may have none.",
-	"name": "Name of the layer as defined by the underlying store.",
-	"size": "Size of the layer as defined by the underlying store.",
+	"":          "ImageLayer represents a single layer of the image. Some images may have multiple layers. Some may have none.",
+	"name":      "Name of the layer as defined by the underlying store.",
+	"size":      "Size of the layer as defined by the underlying store.",
+	"MediaType": "MediaType of the referenced object.",
 }
 
 func (ImageLayer) SwaggerDoc() map[string]string {
