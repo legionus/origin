@@ -22,6 +22,7 @@ func Convert_api_Image_To_v1_Image(in *newer.Image, out *Image, s conversion.Sco
 
 	out.DockerImageReference = in.DockerImageReference
 	out.DockerImageManifest = in.DockerImageManifest
+	out.DockerConfigImage = in.DockerConfigImage
 
 	gvString := in.DockerImageMetadataVersion
 	if len(gvString) == 0 {
@@ -62,6 +63,7 @@ func Convert_v1_Image_To_api_Image(in *Image, out *newer.Image, s conversion.Sco
 
 	out.DockerImageReference = in.DockerImageReference
 	out.DockerImageManifest = in.DockerImageManifest
+	out.DockerConfigImage = in.DockerConfigImage
 
 	version := in.DockerImageMetadataVersion
 	if len(version) == 0 {

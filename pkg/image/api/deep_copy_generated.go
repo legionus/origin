@@ -14,6 +14,9 @@ func init() {
 	if err := api.Scheme.AddGeneratedDeepCopyFuncs(
 		DeepCopy_api_Descriptor,
 		DeepCopy_api_DockerConfig,
+		DeepCopy_api_DockerConfigHistory,
+		DeepCopy_api_DockerConfigImage,
+		DeepCopy_api_DockerConfigRootFS,
 		DeepCopy_api_DockerFSLayer,
 		DeepCopy_api_DockerHistory,
 		DeepCopy_api_DockerImage,
@@ -158,6 +161,64 @@ func DeepCopy_api_DockerConfig(in DockerConfig, out *DockerConfig, c *conversion
 		}
 	} else {
 		out.Labels = nil
+	}
+	return nil
+}
+
+func DeepCopy_api_DockerConfigHistory(in DockerConfigHistory, out *DockerConfigHistory, c *conversion.Cloner) error {
+	if err := unversioned.DeepCopy_unversioned_Time(in.Created, &out.Created, c); err != nil {
+		return err
+	}
+	out.Author = in.Author
+	out.CreatedBy = in.CreatedBy
+	out.Comment = in.Comment
+	out.EmptyLayer = in.EmptyLayer
+	return nil
+}
+
+func DeepCopy_api_DockerConfigImage(in DockerConfigImage, out *DockerConfigImage, c *conversion.Cloner) error {
+	if err := DeepCopy_api_DockerImage(in.DockerImage, &out.DockerImage, c); err != nil {
+		return err
+	}
+	if in.RootFS != nil {
+		in, out := in.RootFS, &out.RootFS
+		*out = new(DockerConfigRootFS)
+		if err := DeepCopy_api_DockerConfigRootFS(*in, *out, c); err != nil {
+			return err
+		}
+	} else {
+		out.RootFS = nil
+	}
+	if in.History != nil {
+		in, out := in.History, &out.History
+		*out = make([]DockerConfigHistory, len(in))
+		for i := range in {
+			if err := DeepCopy_api_DockerConfigHistory(in[i], &(*out)[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.History = nil
+	}
+	out.OSVersion = in.OSVersion
+	if in.OSFeatures != nil {
+		in, out := in.OSFeatures, &out.OSFeatures
+		*out = make([]string, len(in))
+		copy(*out, in)
+	} else {
+		out.OSFeatures = nil
+	}
+	return nil
+}
+
+func DeepCopy_api_DockerConfigRootFS(in DockerConfigRootFS, out *DockerConfigRootFS, c *conversion.Cloner) error {
+	out.Type = in.Type
+	if in.DiffIDs != nil {
+		in, out := in.DiffIDs, &out.DiffIDs
+		*out = make([]string, len(in))
+		copy(*out, in)
+	} else {
+		out.DiffIDs = nil
 	}
 	return nil
 }
@@ -312,6 +373,7 @@ func DeepCopy_api_Image(in Image, out *Image, c *conversion.Cloner) error {
 	} else {
 		out.DockerImageLayers = nil
 	}
+	out.DockerConfigImage = in.DockerConfigImage
 	return nil
 }
 
@@ -355,6 +417,7 @@ func DeepCopy_api_ImageImportStatus(in ImageImportStatus, out *ImageImportStatus
 func DeepCopy_api_ImageLayer(in ImageLayer, out *ImageLayer, c *conversion.Cloner) error {
 	out.Name = in.Name
 	out.Size = in.Size
+	out.MediaType = in.MediaType
 	return nil
 }
 

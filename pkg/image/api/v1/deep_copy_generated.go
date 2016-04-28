@@ -77,6 +77,7 @@ func DeepCopy_v1_Image(in Image, out *Image, c *conversion.Cloner) error {
 	} else {
 		out.DockerImageLayers = nil
 	}
+	out.DockerConfigImage = in.DockerConfigImage
 	return nil
 }
 
@@ -120,6 +121,7 @@ func DeepCopy_v1_ImageImportStatus(in ImageImportStatus, out *ImageImportStatus,
 func DeepCopy_v1_ImageLayer(in ImageLayer, out *ImageLayer, c *conversion.Cloner) error {
 	out.Name = in.Name
 	out.Size = in.Size
+	out.MediaType = in.MediaType
 	return nil
 }
 
