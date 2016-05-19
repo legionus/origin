@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -168,7 +169,7 @@ func (s *StorageBlobSuite) TestContainerExists(c *chk.C) {
 	c.Assert(ok, chk.Equals, true)
 }
 
-func (s *StorageBlobSuite) TestCreateDeleteContainer(c *chk.C) {
+func (s *StorageBlobSuite) TestCreateContainerDeleteContainer(c *chk.C) {
 	cnt := randContainer()
 	cli := getBlobClient(c)
 	c.Assert(cli.CreateContainer(cnt, ContainerAccessTypePrivate), chk.IsNil)
@@ -178,6 +179,7 @@ func (s *StorageBlobSuite) TestCreateDeleteContainer(c *chk.C) {
 func (s *StorageBlobSuite) TestCreateContainerIfNotExists(c *chk.C) {
 	cnt := randContainer()
 	cli := getBlobClient(c)
+	defer cli.DeleteContainer(cnt)
 
 	// First create
 	ok, err := cli.CreateContainerIfNotExists(cnt, ContainerAccessTypePrivate)
@@ -187,7 +189,6 @@ func (s *StorageBlobSuite) TestCreateContainerIfNotExists(c *chk.C) {
 	// Second create, should not give errors
 	ok, err = cli.CreateContainerIfNotExists(cnt, ContainerAccessTypePrivate)
 	c.Assert(err, chk.IsNil)
-	defer cli.DeleteContainer(cnt)
 	c.Assert(ok, chk.Equals, false)
 }
 
@@ -343,6 +344,52 @@ func (s *StorageBlobSuite) TestListBlobsPagination(c *chk.C) {
 	c.Assert(seen, chk.DeepEquals, blobs)
 }
 
+func (s *StorageBlobSuite) TestGetAndSetMetadata(c *chk.C) {
+	cli := getBlobClient(c)
+	cnt := randContainer()
+
+	c.Assert(cli.CreateContainer(cnt, ContainerAccessTypePrivate), chk.IsNil)
+	defer cli.deleteContainer(cnt)
+
+	blob := randString(20)
+	c.Assert(cli.putSingleBlockBlob(cnt, blob, []byte{}), chk.IsNil)
+
+	m, err := cli.GetBlobMetadata(cnt, blob)
+	c.Assert(err, chk.IsNil)
+	c.Assert(m, chk.Not(chk.Equals), nil)
+	c.Assert(len(m), chk.Equals, 0)
+
+	mPut := map[string]string{
+		"foo":     "bar",
+		"bar_baz": "waz qux",
+	}
+
+	err = cli.SetBlobMetadata(cnt, blob, mPut)
+	c.Assert(err, chk.IsNil)
+
+	m, err = cli.GetBlobMetadata(cnt, blob)
+	c.Assert(err, chk.IsNil)
+	c.Check(m, chk.DeepEquals, mPut)
+
+	// Case munging
+
+	mPutUpper := map[string]string{
+		"Foo":     "different bar",
+		"bar_BAZ": "different waz qux",
+	}
+	mExpectLower := map[string]string{
+		"foo":     "different bar",
+		"bar_baz": "different waz qux",
+	}
+
+	err = cli.SetBlobMetadata(cnt, blob, mPutUpper)
+	c.Assert(err, chk.IsNil)
+
+	m, err = cli.GetBlobMetadata(cnt, blob)
+	c.Assert(err, chk.IsNil)
+	c.Check(m, chk.DeepEquals, mExpectLower)
+}
+
 func (s *StorageBlobSuite) TestPutEmptyBlockBlob(c *chk.C) {
 	cli := getBlobClient(c)
 	cnt := randContainer()
@@ -387,6 +434,41 @@ func (s *StorageBlobSuite) TestGetBlobRange(c *chk.C) {
 		str := string(blobBody)
 		c.Assert(str, chk.Equals, r.expected)
 	}
+}
+
+func (s *StorageBlobSuite) TestCreateBlockBlobFromReader(c *chk.C) {
+	cli := getBlobClient(c)
+	cnt := randContainer()
+	c.Assert(cli.CreateContainer(cnt, ContainerAccessTypePrivate), chk.IsNil)
+	defer cli.deleteContainer(cnt)
+
+	name := randString(20)
+	data := randBytes(8888)
+	c.Assert(cli.CreateBlockBlobFromReader(cnt, name, uint64(len(data)), bytes.NewReader(data), nil), chk.IsNil)
+
+	body, err := cli.GetBlob(cnt, name)
+	c.Assert(err, chk.IsNil)
+	gotData, err := ioutil.ReadAll(body)
+	body.Close()
+
+	c.Assert(err, chk.IsNil)
+	c.Assert(gotData, chk.DeepEquals, data)
+}
+
+func (s *StorageBlobSuite) TestCreateBlockBlobFromReaderWithShortData(c *chk.C) {
+	cli := getBlobClient(c)
+	cnt := randContainer()
+	c.Assert(cli.CreateContainer(cnt, ContainerAccessTypePrivate), chk.IsNil)
+	defer cli.deleteContainer(cnt)
+
+	name := randString(20)
+	data := randBytes(8888)
+	err := cli.CreateBlockBlobFromReader(cnt, name, 9999, bytes.NewReader(data), nil)
+	c.Assert(err, chk.Not(chk.IsNil))
+
+	_, err = cli.GetBlob(cnt, name)
+	// Upload was incomplete: blob should not have been created.
+	c.Assert(err, chk.Not(chk.IsNil))
 }
 
 func (s *StorageBlobSuite) TestPutBlock(c *chk.C) {
@@ -467,7 +549,7 @@ func (s *StorageBlobSuite) TestPutPageBlob(c *chk.C) {
 
 	blob := randString(20)
 	size := int64(10 * 1024 * 1024)
-	c.Assert(cli.PutPageBlob(cnt, blob, size), chk.IsNil)
+	c.Assert(cli.PutPageBlob(cnt, blob, size, nil), chk.IsNil)
 
 	// Verify
 	props, err := cli.GetBlobProperties(cnt, blob)
@@ -484,7 +566,7 @@ func (s *StorageBlobSuite) TestPutPagesUpdate(c *chk.C) {
 
 	blob := randString(20)
 	size := int64(10 * 1024 * 1024) // larger than we'll use
-	c.Assert(cli.PutPageBlob(cnt, blob, size), chk.IsNil)
+	c.Assert(cli.PutPageBlob(cnt, blob, size, nil), chk.IsNil)
 
 	chunk1 := []byte(randString(1024))
 	chunk2 := []byte(randString(512))
@@ -523,7 +605,7 @@ func (s *StorageBlobSuite) TestPutPagesClear(c *chk.C) {
 
 	blob := randString(20)
 	size := int64(10 * 1024 * 1024) // larger than we'll use
-	c.Assert(cli.PutPageBlob(cnt, blob, size), chk.IsNil)
+	c.Assert(cli.PutPageBlob(cnt, blob, size, nil), chk.IsNil)
 
 	// Put 0-2047
 	chunk := []byte(randString(2048))
@@ -549,7 +631,7 @@ func (s *StorageBlobSuite) TestGetPageRanges(c *chk.C) {
 
 	blob := randString(20)
 	size := int64(10 * 1024 * 1024) // larger than we'll use
-	c.Assert(cli.PutPageBlob(cnt, blob, size), chk.IsNil)
+	c.Assert(cli.PutPageBlob(cnt, blob, size, nil), chk.IsNil)
 
 	// Get page ranges on empty blob
 	out, err := cli.GetPageRanges(cnt, blob)
@@ -569,6 +651,59 @@ func (s *StorageBlobSuite) TestGetPageRanges(c *chk.C) {
 	out, err = cli.GetPageRanges(cnt, blob)
 	c.Assert(err, chk.IsNil)
 	c.Assert(len(out.PageList), chk.Equals, 2)
+}
+
+func (s *StorageBlobSuite) TestPutAppendBlob(c *chk.C) {
+	cli := getBlobClient(c)
+	cnt := randContainer()
+	c.Assert(cli.CreateContainer(cnt, ContainerAccessTypePrivate), chk.IsNil)
+	defer cli.deleteContainer(cnt)
+
+	blob := randString(20)
+	c.Assert(cli.PutAppendBlob(cnt, blob, nil), chk.IsNil)
+
+	// Verify
+	props, err := cli.GetBlobProperties(cnt, blob)
+	c.Assert(err, chk.IsNil)
+	c.Assert(props.ContentLength, chk.Equals, int64(0))
+	c.Assert(props.BlobType, chk.Equals, BlobTypeAppend)
+}
+
+func (s *StorageBlobSuite) TestPutAppendBlobAppendBlocks(c *chk.C) {
+	cli := getBlobClient(c)
+	cnt := randContainer()
+	c.Assert(cli.CreateContainer(cnt, ContainerAccessTypePrivate), chk.IsNil)
+	defer cli.deleteContainer(cnt)
+
+	blob := randString(20)
+	c.Assert(cli.PutAppendBlob(cnt, blob, nil), chk.IsNil)
+
+	chunk1 := []byte(randString(1024))
+	chunk2 := []byte(randString(512))
+
+	// Append first block
+	c.Assert(cli.AppendBlock(cnt, blob, chunk1), chk.IsNil)
+
+	// Verify contents
+	out, err := cli.GetBlobRange(cnt, blob, fmt.Sprintf("%v-%v", 0, len(chunk1)-1))
+	c.Assert(err, chk.IsNil)
+	defer out.Close()
+	blobContents, err := ioutil.ReadAll(out)
+	c.Assert(err, chk.IsNil)
+	c.Assert(blobContents, chk.DeepEquals, chunk1)
+	out.Close()
+
+	// Append second block
+	c.Assert(cli.AppendBlock(cnt, blob, chunk2), chk.IsNil)
+
+	// Verify contents
+	out, err = cli.GetBlobRange(cnt, blob, fmt.Sprintf("%v-%v", 0, len(chunk1)+len(chunk2)-1))
+	c.Assert(err, chk.IsNil)
+	defer out.Close()
+	blobContents, err = ioutil.ReadAll(out)
+	c.Assert(err, chk.IsNil)
+	c.Assert(blobContents, chk.DeepEquals, append(chunk1, chunk2...))
+	out.Close()
 }
 
 func deleteTestContainers(cli BlobStorageClient) error {
@@ -622,4 +757,12 @@ func randString(n int) string {
 		bytes[i] = alphanum[b%byte(len(alphanum))]
 	}
 	return string(bytes)
+}
+
+func randBytes(n int) []byte {
+	data := make([]byte, n)
+	if _, err := io.ReadFull(rand.Reader, data); err != nil {
+		panic(err)
+	}
+	return data
 }

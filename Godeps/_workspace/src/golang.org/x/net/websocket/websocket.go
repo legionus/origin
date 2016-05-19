@@ -4,7 +4,7 @@
 
 // Package websocket implements a client and server for the WebSocket protocol
 // as specified in RFC 6455.
-package websocket
+package websocket // import "golang.org/x/net/websocket"
 
 import (
 	"bufio"
@@ -144,6 +144,8 @@ type frameHandler interface {
 }
 
 // Conn represents a WebSocket connection.
+//
+// Multiple goroutines may invoke methods on a Conn simultaneously.
 type Conn struct {
 	config  *Config
 	request *http.Request
