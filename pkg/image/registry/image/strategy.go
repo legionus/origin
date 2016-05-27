@@ -74,6 +74,15 @@ func (imageStrategy) PrepareForUpdate(obj, old runtime.Object) {
 	newImage.DockerImageMetadataVersion = oldImage.DockerImageMetadataVersion
 	newImage.DockerImageLayers = oldImage.DockerImageLayers
 	newImage.Signatures = oldImage.Signatures
+	newImage.DockerImageConfig = oldImage.DockerImageConfig
+	newImage.DockerImageManifestMediaType = oldImage.DockerImageManifestMediaType
+
+	if oldImage.DockerImageSignatures != nil {
+		newImage.DockerImageSignatures = nil
+		for _, v := range oldImage.DockerImageSignatures {
+			newImage.DockerImageSignatures = append(newImage.DockerImageSignatures, v)
+		}
+	}
 
 	// allow an image update that results in the manifest matching the digest (the name)
 	newManifest := newImage.DockerImageManifest
