@@ -15,7 +15,7 @@ var dockerStorageDriver storagedriver.StorageDriver
 
 func init() {
 	registrystorage.Register("openshift", func(driver storagedriver.StorageDriver, options map[string]interface{}) (storagedriver.StorageDriver, error) {
-		log.Info("Middleware for storage driver")
+		log.Info("OpenShift middleware for storage driver init")
 
 		// We can do this because of an initialization sequence of middlewares.
 		// Storage driver is required to create registry. So we can be sure that

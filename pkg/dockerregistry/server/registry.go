@@ -16,7 +16,7 @@ var dockerRegistry distribution.Namespace
 
 func init() {
 	middleware.Register("openshift", func(ctx context.Context, registry distribution.Namespace, options map[string]interface{}) (distribution.Namespace, error) {
-		log.Info("Middleware for registry")
+		log.Info("OpenShift registry middleware init")
 		dockerRegistry = registry
 		return dockerRegistry, nil
 	})
