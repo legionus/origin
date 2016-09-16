@@ -30,6 +30,8 @@ const (
 	// DockerDefaultV2Registry is the host name of the default v2 registry
 	DockerDefaultV2Registry = "registry-1." + DockerDefaultRegistry
 
+	LocalDockerRegistry = ".openshift.local.registry"
+
 	// containerImageEntrypointAnnotationFormatKey is a format used to identify the entrypoint of a particular
 	// container in a pod template. It is a JSON array of strings.
 	containerImageEntrypointAnnotationFormatKey = "openshift.io/container.%s.image.entrypoint"

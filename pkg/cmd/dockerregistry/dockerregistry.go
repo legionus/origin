@@ -57,6 +57,8 @@ func Execute(configFile io.Reader) {
 	// with uuid generation under low entropy.
 	uuid.Loggerf = context.GetLogger(ctx).Warnf
 
+	ctx = applyBlobIndex(ctx)
+
 	app := handlers.NewApp(ctx, config)
 
 	// Add a token handling endpoint
@@ -267,4 +269,9 @@ func setDefaultMiddleware(config *configuration.Configuration) {
 		log.Errorf("obsolete configuration detected, please add openshift %s middleware into registry config file", middlewareType)
 	}
 	return
+}
+
+func applyBlobIndex(ctx context.Context) context.Context {
+	blobIndex := server.NewBlobIndex()
+	return context.WithValue(ctx, server.BlobIndexContextVar, blobIndex)
 }

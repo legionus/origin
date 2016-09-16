@@ -51,8 +51,31 @@ func (bs *blobDescriptorService) Stat(ctx context.Context, dgst digest.Digest) (
 		return distribution.Descriptor{}, err
 	}
 
+	blobIndex, found := ctx.Value(BlobIndexContextVar).(*BlobIndex)
+	if !found || blobIndex == nil {
+		err := fmt.Errorf("failed to retrieve blob index from context")
+		context.GetLogger(ctx).Error(err)
+		return distribution.Descriptor{}, err
+	}
+
+	desc, err := blobIndex.Get(&BlobReference{
+		Digest: dgst,
+		Reference: imageapi.DockerImageReference{
+			Registry:  imageapi.LocalDockerRegistry,
+			Namespace: repo.namespace,
+			Name:      repo.name,
+		},
+	})
+	if err == nil {
+		repo.cachedLayers.RememberDigest(dgst, repo.blobrepositorycachettl, imageapi.DockerImageReference{
+			Namespace: repo.namespace,
+			Name:      repo.name,
+		}.Exact())
+		return desc, nil
+	}
+
 	// if there is a repo layer link, return its descriptor
-	desc, err := bs.BlobDescriptorService.Stat(ctx, dgst)
+	desc, err = bs.BlobDescriptorService.Stat(ctx, dgst)
 	if err == nil {
 		// and remember the association
 		repo.cachedLayers.RememberDigest(dgst, repo.blobrepositorycachettl, imageapi.DockerImageReference{
@@ -72,6 +95,18 @@ func (bs *blobDescriptorService) Stat(ctx context.Context, dgst digest.Digest) (
 
 	// ensure it's referenced inside of corresponding image stream
 	if imageStreamHasBlob(repo, dgst) {
+		err := blobIndex.Add(&BlobReference{
+			Digest:     dgst,
+			Descriptor: desc,
+			Reference: imageapi.DockerImageReference{
+				Registry:  imageapi.LocalDockerRegistry,
+				Namespace: repo.namespace,
+				Name:      repo.name,
+			},
+		})
+		if err != nil && err != ErrBlobIndexAlreadyExists {
+			return err
+		}
 		return desc, nil
 	}
 
@@ -86,11 +121,63 @@ func (bs *blobDescriptorService) Clear(ctx context.Context, dgst digest.Digest) 
 		return err
 	}
 
+	blobIndex, found := ctx.Value(BlobIndexContextVar).(*BlobIndex)
+	if !found || blobIndex == nil {
+		err := fmt.Errorf("failed to retrieve blob index from context")
+		context.GetLogger(ctx).Error(err)
+		return err
+	}
+
+	err := blobIndex.Remove(&BlobReference{
+		Digest: dgst,
+		Reference: imageapi.DockerImageReference{
+			Registry:  imageapi.LocalDockerRegistry,
+			Namespace: repo.namespace,
+			Name:      repo.name,
+		},
+	})
+	if err != nil {
+		context.GetLogger(ctx).Error(err)
+		return err
+	}
+
 	repo.cachedLayers.ForgetDigest(dgst, imageapi.DockerImageReference{
 		Namespace: repo.namespace,
 		Name:      repo.name,
 	}.Exact())
+
 	return bs.BlobDescriptorService.Clear(ctx, dgst)
+}
+
+func (bs *blobDescriptorService) SetDescriptor(ctx context.Context, dgst digest.Digest, desc distribution.Descriptor) error {
+	repo, found := RepositoryFrom(ctx)
+	if !found || repo == nil {
+		err := fmt.Errorf("failed to retrieve repository from context")
+		context.GetLogger(ctx).Error(err)
+		return err
+	}
+
+	blobIndex, found := ctx.Value(BlobIndexContextVar).(*BlobIndex)
+	if !found || blobIndex == nil {
+		err := fmt.Errorf("failed to retrieve blob index from context")
+		context.GetLogger(ctx).Error(err)
+		return err
+	}
+
+	err := blobIndex.Add(&BlobReference{
+		Digest:     dgst,
+		Descriptor: desc,
+		Reference: imageapi.DockerImageReference{
+			Registry:  imageapi.LocalDockerRegistry,
+			Namespace: repo.namespace,
+			Name:      repo.name,
+		},
+	})
+	if err != nil && err != ErrBlobIndexAlreadyExists {
+		return err
+	}
+
+	return nil
 }
 
 // imageStreamHasBlob returns true if the given blob digest is referenced in image stream corresponding to

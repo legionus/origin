@@ -5,7 +5,7 @@ http:
   addr: :5000
 storage:
   cache:
-    blobdescriptor: inmemory
+    blobdescriptor: ""
   filesystem:
     rootdirectory: /registry
   delete:

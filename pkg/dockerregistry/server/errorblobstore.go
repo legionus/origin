@@ -73,14 +73,31 @@ func (r *errorBlobStore) Create(ctx context.Context, options ...distribution.Blo
 		})
 	}
 
-	return r.store.Create(ctx, options...)
+	bw, err := r.store.Create(ctx, options...)
+	if err != nil {
+		return nil, err
+	}
+
+	repo := (*r.repo)
+	repo.ctx = ctx
+
+	return &errorBlobWriter{BlobWriter: bw, repo: &repo}, nil
 }
 
 func (r *errorBlobStore) Resume(ctx context.Context, id string) (distribution.BlobWriter, error) {
 	if err := r.repo.checkPendingErrors(ctx); err != nil {
 		return nil, err
 	}
-	return r.store.Resume(WithRepository(ctx, r.repo), id)
+
+	bw, err := r.store.Resume(WithRepository(ctx, r.repo), id)
+	if err != nil {
+		return nil, err
+	}
+
+	repo := (*r.repo)
+	repo.ctx = ctx
+
+	return &errorBlobWriter{BlobWriter: bw, repo: &repo}, nil
 }
 
 func (r *errorBlobStore) ServeBlob(ctx context.Context, w http.ResponseWriter, req *http.Request, dgst digest.Digest) error {
@@ -95,6 +112,19 @@ func (r *errorBlobStore) Delete(ctx context.Context, dgst digest.Digest) error {
 		return err
 	}
 	return r.store.Delete(WithRepository(ctx, r.repo), dgst)
+}
+
+type errorBlobWriter struct {
+	distribution.BlobWriter
+	repo *repository
+}
+
+func (bw *errorBlobWriter) Commit(ctx context.Context, provisional distribution.Descriptor) (canonical distribution.Descriptor, err error) {
+	return bw.BlobWriter.Commit(WithRepository(ctx, bw.repo), provisional)
+}
+
+func (bw *errorBlobWriter) Cancel(ctx context.Context) error {
+	return bw.BlobWriter.Cancel(WithRepository(ctx, bw.repo))
 }
 
 // checkPendingCrossMountErrors returns true if a cross-repo mount has been requested with given create
