@@ -306,7 +306,7 @@ func ValidateImageStreamImport(isi *api.ImageStreamImport) field.ErrorList {
 			if len(spec.From.Name) == 0 {
 				errs = append(errs, field.Required(imagesPath.Index(i).Child("from", "name"), ""))
 			} else {
-				if ref, err := api.ParseDockerImageReference(spec.From.Name); err != nil {
+				if ref, err := api.ParseMultiSegmentsDockerImageReference(spec.From.Name); err != nil {
 					errs = append(errs, field.Invalid(imagesPath.Index(i).Child("from", "name"), spec.From.Name, err.Error()))
 				} else {
 					if len(ref.ID) > 0 && spec.ImportPolicy.Scheduled {
@@ -326,7 +326,7 @@ func ValidateImageStreamImport(isi *api.ImageStreamImport) field.ErrorList {
 			if len(spec.From.Name) == 0 {
 				errs = append(errs, field.Required(repoPath.Child("from", "name"), ""))
 			} else {
-				if ref, err := api.ParseDockerImageReference(from.Name); err != nil {
+				if ref, err := api.ParseMultiSegmentsDockerImageReference(from.Name); err != nil {
 					errs = append(errs, field.Invalid(repoPath.Child("from", "name"), from.Name, err.Error()))
 				} else {
 					if len(ref.ID) > 0 || len(ref.Tag) > 0 {

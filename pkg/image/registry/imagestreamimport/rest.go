@@ -183,12 +183,12 @@ func (r *REST) Create(ctx kapi.Context, obj runtime.Object) (runtime.Object, err
 			}
 
 			image := status.Image
-			ref, err := api.ParseDockerImageReference(image.DockerImageReference)
+			ref, err := api.ParseMultiSegmentsDockerImageReference(image.DockerImageReference)
 			if err != nil {
 				utilruntime.HandleError(fmt.Errorf("unable to parse image reference during import: %v", err))
 				continue
 			}
-			from, err := api.ParseDockerImageReference(spec.From.Name)
+			from, err := api.ParseMultiSegmentsDockerImageReference(spec.From.Name)
 			if err != nil {
 				utilruntime.HandleError(fmt.Errorf("unable to parse from reference during import: %v", err))
 				continue

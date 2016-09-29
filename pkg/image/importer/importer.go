@@ -105,7 +105,7 @@ func (i *ImageStreamImporter) importImages(ctx gocontext.Context, retriever Repo
 		if from.Kind != "DockerImage" {
 			continue
 		}
-		ref, err := api.ParseDockerImageReference(from.Name)
+		ref, err := api.ParseMultiSegmentsDockerImageReference(from.Name)
 		if err != nil {
 			isi.Status.Images[i].Status = invalidStatus("", field.Invalid(field.NewPath("from", "name"), from.Name, fmt.Sprintf("invalid name: %v", err)))
 			continue
@@ -212,7 +212,7 @@ func (i *ImageStreamImporter) importFromRepository(ctx gocontext.Context, retrie
 	if from.Kind != "DockerImage" {
 		return
 	}
-	ref, err := api.ParseDockerImageReference(from.Name)
+	ref, err := api.ParseMultiSegmentsDockerImageReference(from.Name)
 	if err != nil {
 		status.Status = invalidStatus("", field.Invalid(field.NewPath("from", "name"), from.Name, fmt.Sprintf("invalid name: %v", err)))
 		return
