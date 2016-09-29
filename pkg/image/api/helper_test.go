@@ -122,10 +122,16 @@ func TestParseImageStreamTagName(t *testing.T) {
 }
 
 func TestParseDockerImageReference(t *testing.T) {
+	parserFuncs := map[string]func(spec string) (DockerImageReference, error){
+		"ParseDockerImageReference":              ParseDockerImageReference,
+		"ParseMultiSegmentsDockerImageReference": ParseMultiSegmentsDockerImageReference,
+	}
+
 	testCases := []struct {
 		From                               string
 		Registry, Namespace, Name, Tag, ID string
 		Err                                bool
+		MSegErr                            bool
 	}{
 		{
 			From: "foo",
@@ -283,51 +289,79 @@ func TestParseDockerImageReference(t *testing.T) {
 		// 	Err:  true,
 		// },
 		{
-			From: "https://bar:5000/foo/baz",
-			Err:  true,
+			From:    "https://bar:5000/foo/baz",
+			Err:     true,
+			MSegErr: true,
 		},
 		{
-			From: "http://bar:5000/foo/baz@sha256:3c87c572822935df60f0f5d3665bd376841a7fcfeb806b5f212de6a00e9a7b25",
-			Err:  true,
+			From:    "http://bar:5000/foo/baz@sha256:3c87c572822935df60f0f5d3665bd376841a7fcfeb806b5f212de6a00e9a7b25",
+			Err:     true,
+			MSegErr: true,
 		},
 		{
-			From: "bar/foo/baz/biz",
-			Err:  true,
+			From:      "bar/foo/baz/biz",
+			Registry:  "bar",
+			Namespace: "foo",
+			Name:      "baz/biz",
+			Err:       true,
+			MSegErr:   false,
 		},
 		{
-			From: "ftp://baz/baz/biz",
-			Err:  true,
+			From:    "ftp://baz/baz/biz",
+			Err:     true,
+			MSegErr: true,
 		},
 		{
-			From: "",
-			Err:  true,
+			From:    "172.17.0.2:5000/foo/bar/baz/busybox",
+			Registry:  "172.17.0.2:5000",
+			Namespace: "foo",
+			Name:      "bar/baz/busybox",
+			Err:     true,
+			MSegErr: false,
+		},
+		{
+			From:    "",
+			Err:     true,
+			MSegErr: true,
 		},
 	}
 
 	for _, testCase := range testCases {
-		ref, err := ParseDockerImageReference(testCase.From)
-		switch {
-		case err != nil && !testCase.Err:
-			t.Errorf("%s: unexpected error: %v", testCase.From, err)
-			continue
-		case err == nil && testCase.Err:
-			t.Errorf("%s: unexpected non-error", testCase.From)
-			continue
-		}
-		if e, a := testCase.Registry, ref.Registry; e != a {
-			t.Errorf("%s: registry: expected %q, got %q", testCase.From, e, a)
-		}
-		if e, a := testCase.Namespace, ref.Namespace; e != a {
-			t.Errorf("%s: namespace: expected %q, got %q", testCase.From, e, a)
-		}
-		if e, a := testCase.Name, ref.Name; e != a {
-			t.Errorf("%s: name: expected %q, got %q", testCase.From, e, a)
-		}
-		if e, a := testCase.Tag, ref.Tag; e != a {
-			t.Errorf("%s: tag: expected %q, got %q", testCase.From, e, a)
-		}
-		if e, a := testCase.ID, ref.ID; e != a {
-			t.Errorf("%s: id: expected %q, got %q", testCase.From, e, a)
+		for funcName, parserFunc := range parserFuncs {
+			ref, err := parserFunc(testCase.From)
+
+			testCaseErr := testCase.Err
+			if funcName == "ParseMultiSegmentsDockerImageReference" {
+				testCaseErr = testCase.MSegErr
+			}
+
+			switch {
+			case err != nil && !testCaseErr:
+				t.Errorf("%s: %s: unexpected error: %v", funcName, testCase.From, err)
+				continue
+			case err == nil && testCaseErr:
+				t.Errorf("%s: %s: unexpected non-error", funcName, testCase.From)
+				continue
+			case err != nil && testCaseErr:
+				t.Skipf("%s: %s: expected error", funcName, testCase.From)
+				continue
+			}
+
+			if e, a := testCase.Registry, ref.Registry; e != a {
+				t.Errorf("%s: %s: registry: expected %q, got %q", funcName, testCase.From, e, a)
+			}
+			if e, a := testCase.Namespace, ref.Namespace; e != a {
+				t.Errorf("%s: %s: namespace: expected %q, got %q", funcName, testCase.From, e, a)
+			}
+			if e, a := testCase.Name, ref.Name; e != a {
+				t.Errorf("%s: %s: name: expected %q, got %q", funcName, testCase.From, e, a)
+			}
+			if e, a := testCase.Tag, ref.Tag; e != a {
+				t.Errorf("%s: %s: tag: expected %q, got %q", funcName, testCase.From, e, a)
+			}
+			if e, a := testCase.ID, ref.ID; e != a {
+				t.Errorf("%s: %s: id: expected %q, got %q", funcName, testCase.From, e, a)
+			}
 		}
 	}
 }

@@ -130,14 +130,9 @@ func IsRegistryDockerHub(registry string) bool {
 	}
 }
 
-// ParseDockerImageReference parses a Docker pull spec string into a
-// DockerImageReference.
-func ParseDockerImageReference(spec string) (DockerImageReference, error) {
+func parseDockerImageReference(repoParts []string, spec string) (DockerImageReference, error) {
 	var ref DockerImageReference
-	// TODO replace with docker version once docker/docker PR11109 is merged upstream
-	stream, tag, id := parseRepositoryTag(spec)
 
-	repoParts := strings.Split(stream, "/")
 	switch len(repoParts) {
 	case 2:
 		if isRegistryName(repoParts[0]) {
@@ -150,8 +145,6 @@ func ParseDockerImageReference(spec string) (DockerImageReference, error) {
 				return ref, fmt.Errorf("the docker pull spec %q must be two or three segments separated by slashes", spec)
 			}
 			ref.Name = repoParts[1]
-			ref.Tag = tag
-			ref.ID = id
 			break
 		}
 		// namespace/name
@@ -160,8 +153,6 @@ func ParseDockerImageReference(spec string) (DockerImageReference, error) {
 			return ref, fmt.Errorf("the docker pull spec %q must be two or three segments separated by slashes", spec)
 		}
 		ref.Name = repoParts[1]
-		ref.Tag = tag
-		ref.ID = id
 		break
 	case 3:
 		// registry/namespace/name
@@ -171,8 +162,6 @@ func ParseDockerImageReference(spec string) (DockerImageReference, error) {
 			return ref, fmt.Errorf("the docker pull spec %q must be two or three segments separated by slashes", spec)
 		}
 		ref.Name = repoParts[2]
-		ref.Tag = tag
-		ref.ID = id
 		break
 	case 1:
 		// name
@@ -180,13 +169,66 @@ func ParseDockerImageReference(spec string) (DockerImageReference, error) {
 			return ref, fmt.Errorf("the docker pull spec %q must be two or three segments separated by slashes", spec)
 		}
 		ref.Name = repoParts[0]
-		ref.Tag = tag
-		ref.ID = id
 		break
 	default:
 		// TODO: this is no longer true with V2
 		return ref, fmt.Errorf("the docker pull spec %q must be two or three segments separated by slashes", spec)
 	}
+
+	return ref, nil
+}
+
+// ParseDockerImageReference parses a Docker pull spec string into a
+// DockerImageReference.
+func ParseDockerImageReference(spec string) (DockerImageReference, error) {
+	// TODO replace with docker version once docker/docker PR11109 is merged upstream
+	stream, tag, id := parseRepositoryTag(spec)
+
+	ref, err := parseDockerImageReference(strings.Split(stream, "/"), spec)
+	if err != nil {
+		return ref, err
+	}
+	ref.Tag = tag
+	ref.ID = id
+
+	return ref, err
+}
+
+func ParseMultiSegmentsDockerImageReference(spec string) (DockerImageReference, error) {
+	stream, tag, id := parseRepositoryTag(spec)
+
+	repoParts := strings.Split(stream, "/")
+	if len(repoParts) < 4 {
+		ref, err := parseDockerImageReference(repoParts, spec)
+		if err != nil {
+			return ref, err
+		}
+		ref.Tag = tag
+		ref.ID = id
+
+		return ref, err
+	}
+
+	var ref DockerImageReference
+
+	// registry/namespace/name/namecomponent/namecomponent/...
+	if strings.HasSuffix(repoParts[0], ":") || IsRegistryDockerHub(repoParts[0]) {
+			return ref, fmt.Errorf("the docker pull spec %q must be two or three segments separated by slashes", spec)
+	}
+	ref.Registry = repoParts[0]
+
+	if len(repoParts[1]) == 0 {
+		return ref, fmt.Errorf("the docker pull spec %q must contain non-empty namespace", spec)
+	}
+	ref.Namespace = repoParts[1]
+
+	ref.Name = strings.Join(repoParts[2:], "/")
+	if len(ref.Name) == 0 {
+		return ref, fmt.Errorf("the docker pull spec %q must be more than three segments separated by slashes", spec)
+	}
+
+	ref.Tag = tag
+	ref.ID = id
 
 	return ref, nil
 }
@@ -851,7 +893,7 @@ func ResolveImageID(stream *ImageStream, imageID string) (*TagEvent, error) {
 // MostAccuratePullSpec returns a docker image reference that uses the current ID if possible, the current tag otherwise, and
 // returns false if the reference if the spec could not be parsed. The returned spec has all client defaults applied.
 func MostAccuratePullSpec(pullSpec string, id, tag string) (string, bool) {
-	ref, err := ParseDockerImageReference(pullSpec)
+	ref, err := ParseMultiSegmentsDockerImageReference(pullSpec)
 	if err != nil {
 		return pullSpec, false
 	}
