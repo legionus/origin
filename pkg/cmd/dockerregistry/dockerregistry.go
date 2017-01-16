@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -75,7 +76,6 @@ func Execute(configFile io.Reader) {
 
 	// TODO add https scheme
 	adminRouter := app.NewRoute().PathPrefix("/admin/").Subrouter()
-
 	pruneAccessRecords := func(*http.Request) []auth.Access {
 		return []auth.Access{
 			{
@@ -97,6 +97,38 @@ func Execute(configFile io.Reader) {
 		// custom access records
 		pruneAccessRecords,
 	)
+
+	// openshiftRouter groups the OpenShift related registry extensions
+	openshiftRouter := app.NewRoute().PathPrefix("/apis/registry.openshift.io/v1").Subrouter()
+
+	signatureRouter := openshiftRouter.NewRoute().PathPrefix("/imagesignatures/").Subrouter()
+	signatureAccessRecords := func(*http.Request) []auth.Access {
+		return []auth.Access{
+			{
+				Resource: auth.Resource{
+					Type: "signature",
+				},
+				Action: "get",
+			},
+		}
+	}
+
+	app.RegisterRoute(
+		// GET /openshift/signature/<reference>
+		// FIXME: Because the reference.ReferenceRegexp is anchored, we have to strip the
+		// leading '^' from the regexp in order to match the image reference in a sub-path.
+		signatureRouter.Path("/{reference:"+strings.TrimPrefix(reference.ReferenceRegexp.String(), "^")+"}").Methods("GET"),
+		server.SignatureDispatcher,
+		handlers.NameNotRequired,
+		signatureAccessRecords,
+	)
+
+	// Advertise features supported by OpenShift
+	// FIXME: is there a way to advertise this only in /v2/ endpoint?
+	if app.Config.HTTP.Headers == nil {
+		app.Config.HTTP.Headers = http.Header{}
+	}
+	app.Config.HTTP.Headers.Set("X-Registry-Supports-Signatures", "1")
 
 	app.RegisterHealthChecks()
 	handler := alive("/", app)
