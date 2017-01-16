@@ -60,6 +60,29 @@ type registryClient struct {
 	config *clientcmd.Config
 }
 
+var (
+	GetSignatureAccess = func(*http.Request) []registryauth.Access {
+		return []registryauth.Access{
+			{
+				Resource: registryauth.Resource{
+					Type: "signature",
+				},
+				Action: "get",
+			},
+		}
+	}
+	CreateSignatureAccess = func(*http.Request) []registryauth.Access {
+		return []registryauth.Access{
+			{
+				Resource: registryauth.Resource{
+					Type: "signature",
+				},
+				Action: "create",
+			},
+		}
+	}
+)
+
 var _ RegistryClient = &registryClient{}
 
 // NewRegistryClient creates a registry client.
@@ -349,6 +372,14 @@ func (ac *AccessController) Authorized(ctx context.Context, accessRecords ...reg
 					}
 					possibleCrossMountErrors.Add(imageStreamNS, imageStreamName, ac.wrapErr(ctx, err))
 				}
+			}
+
+		case "signature":
+			switch access.Action {
+			case "get":
+				continue
+			case "create":
+				continue
 			}
 
 		case "admin":
