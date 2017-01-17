@@ -351,6 +351,14 @@ func (ac *AccessController) Authorized(ctx context.Context, accessRecords ...reg
 				}
 			}
 
+		case "signature":
+			switch access.Action {
+			case "get":
+				// For /signature/<reference> we pass the request to OpenShift API using the user
+				// token so the authorization happen on the OpenShift API side.
+				continue
+			}
+
 		case "admin":
 			switch access.Action {
 			case "prune":
