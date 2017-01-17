@@ -354,9 +354,13 @@ func (ac *AccessController) Authorized(ctx context.Context, accessRecords ...reg
 		case "signature":
 			switch access.Action {
 			case "get":
-				// For /signature/<reference> we pass the request to OpenShift API using the user
-				// token so the authorization happen on the OpenShift API side.
-				continue
+				imageStreamNS, imageStreamName, err := getNamespaceName(access.Resource.Name)
+				if err != nil {
+					return nil, ac.wrapErr(ctx, err)
+				}
+				if err := verifyImageStreamAccess(ctx, imageStreamNS, imageStreamName, "get", osClient); err != nil {
+					return nil, ac.wrapErr(ctx, err)
+				}
 			}
 
 		case "admin":

@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"strings"
+	"regexp"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -17,6 +17,7 @@ import (
 	"github.com/Sirupsen/logrus/formatters/logstash"
 	"github.com/docker/distribution/configuration"
 	"github.com/docker/distribution/context"
+	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/health"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/auth"
@@ -101,25 +102,27 @@ func Execute(configFile io.Reader) {
 	// openshiftRouter groups the OpenShift related registry extensions
 	openshiftRouter := app.NewRoute().PathPrefix("/apis/registry.openshift.io/v1").Subrouter()
 
-	signatureRouter := openshiftRouter.NewRoute().PathPrefix("/imagesignatures/").Subrouter()
-	signatureAccessRecords := func(*http.Request) []auth.Access {
+	signatureRouter := openshiftRouter.NewRoute().PathPrefix("/imagesignatures").Subrouter()
+	signatureAccessRecords := func(r *http.Request) []auth.Access {
 		return []auth.Access{
 			{
 				Resource: auth.Resource{
 					Type: "signature",
+					Name: context.GetStringValue(context.WithVars(app, r), "vars.name"),
 				},
 				Action: "get",
 			},
 		}
 	}
-
+	signaturePath := fmt.Sprintf("/{name:%s}{reference:(%s%s|%s%s)}",
+		reference.NameRegexp.String(),
+		regexp.QuoteMeta(":"), reference.TagRegexp.String(),
+		regexp.QuoteMeta("@"), digest.DigestRegexp.String(),
+	)
 	app.RegisterRoute(
-		// GET /openshift/signature/<reference>
-		// FIXME: Because the reference.ReferenceRegexp is anchored, we have to strip the
-		// leading '^' from the regexp in order to match the image reference in a sub-path.
-		signatureRouter.Path("/{reference:"+strings.TrimPrefix(reference.ReferenceRegexp.String(), "^")+"}").Methods("GET"),
+		signatureRouter.Path(signaturePath).Methods("GET"),
 		server.SignatureDispatcher,
-		handlers.NameNotRequired,
+		handlers.NameRequired,
 		signatureAccessRecords,
 	)
 

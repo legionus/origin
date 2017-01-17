@@ -30,7 +30,13 @@ type ImageSignatureList struct {
 
 // SignatureDispatcher dispatch the signatures endpoint.
 func SignatureDispatcher(ctx *handlers.Context, r *http.Request) http.Handler {
-	signatureHandler := &signatureHandler{Context: ctx, originalReference: ctxu.GetStringValue(ctx, "vars.reference")}
+	reference := ctxu.GetStringValue(ctx, "vars.name") + ctxu.GetStringValue(ctx, "vars.reference")
+
+	signatureHandler := &signatureHandler{
+		Context: ctx,
+		originalReference: reference,
+	}
+
 	signatureHandler.Reference, _ = imageapi.ParseDockerImageReference(signatureHandler.originalReference)
 	return gorillahandlers.MethodHandler{
 		"GET": http.HandlerFunc(signatureHandler.Get),
