@@ -266,6 +266,45 @@ func TestNewImageStreamObject(namespace, name, tag, imageName, dockerImageRefere
 	}
 }
 
+// GetFakeImageStreamImageGetHandler returns a reaction function for use
+// with wake os client returning one of given imagestream image objects if found.
+func GetFakeImageStreamImageGetHandler(t *testing.T, ism *imageapi.ImageStream, iss ...imageapi.Image) core.ReactionFunc {
+	return func(action core.Action) (handled bool, ret runtime.Object, err error) {
+		switch a := action.(type) {
+		case core.GetAction:
+			for _, is := range iss {
+				name, imageID, err := imageapi.ParseImageStreamImageName(a.GetName())
+				if err != nil {
+					return true, nil, err
+				}
+
+				if imageID != is.Name {
+					continue
+				}
+
+				t.Logf("imagestreamimage get handler: returning image %s", is.Name)
+
+				isi := imageapi.ImageStreamImage{
+					ObjectMeta: kapi.ObjectMeta{
+						Namespace:         is.Namespace,
+						Name:              imageapi.MakeImageStreamImageName(name, imageID),
+						CreationTimestamp: is.ObjectMeta.CreationTimestamp,
+						Annotations:       ism.Annotations,
+					},
+					Image: is,
+				}
+
+				return true, &isi, nil
+			}
+
+			err := kerrors.NewNotFound(kapi.Resource("imagestreamimages"), a.GetName())
+			t.Logf("imagestreamimage get handler: %v", err)
+			return true, nil, err
+		}
+		return false, nil, nil
+	}
+}
+
 type testCredentialStore struct {
 	username      string
 	password      string

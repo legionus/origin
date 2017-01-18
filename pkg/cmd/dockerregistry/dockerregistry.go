@@ -99,43 +99,7 @@ func Execute(configFile io.Reader) {
 
 	// Registry extensions endpoint provides extra functionality to handle the image
 	// signatures.
-	extensionsRouter := app.NewRoute().PathPrefix("/extensions/v2/").Subrouter()
-	var (
-		getSignatureAccess = func(r *http.Request) []auth.Access {
-			return []auth.Access{
-				{
-					Resource: auth.Resource{
-						Type: "signature",
-						Name: context.GetStringValue(context.WithVars(app, r), "vars.name"),
-					},
-					Action: "get",
-				},
-			}
-		}
-		putSignatureAccess = func(r *http.Request) []auth.Access {
-			return []auth.Access{
-				{
-					Resource: auth.Resource{
-						Type: "signature",
-						Name: context.GetStringValue(context.WithVars(app, r), "vars.name"),
-					},
-					Action: "put",
-				},
-			}
-		}
-	)
-	app.RegisterRoute(
-		extensionsRouter.Path("/{name:"+reference.NameRegexp.String()+"}/signatures/{digest:"+reference.DigestRegexp.String()+"}").Methods("GET"),
-		server.SignatureDispatcher,
-		handlers.NameRequired,
-		getSignatureAccess,
-	)
-	app.RegisterRoute(
-		extensionsRouter.Path("/{name:"+reference.NameRegexp.String()+"}/signatures/{digest:"+reference.DigestRegexp.String()+"}").Methods("PUT"),
-		server.SignatureDispatcher,
-		handlers.NameRequired,
-		putSignatureAccess,
-	)
+	server.RegisterSignatureHandler(app)
 
 	// Advertise features supported by OpenShift
 	if app.Config.HTTP.Headers == nil {
