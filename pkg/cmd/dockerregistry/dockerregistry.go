@@ -75,7 +75,6 @@ func Execute(configFile io.Reader) {
 
 	// TODO add https scheme
 	adminRouter := app.NewRoute().PathPrefix("/admin/").Subrouter()
-
 	pruneAccessRecords := func(*http.Request) []auth.Access {
 		return []auth.Access{
 			{
@@ -97,6 +96,52 @@ func Execute(configFile io.Reader) {
 		// custom access records
 		pruneAccessRecords,
 	)
+
+	// Registry extensions endpoint provides extra functionality to handle the image
+	// signatures.
+	extensionsRouter := app.NewRoute().PathPrefix("/extensions/v2/").Subrouter()
+	var (
+		getSignatureAccess = func(r *http.Request) []auth.Access {
+			return []auth.Access{
+				{
+					Resource: auth.Resource{
+						Type: "signature",
+						Name: context.GetStringValue(context.WithVars(app, r), "vars.name"),
+					},
+					Action: "get",
+				},
+			}
+		}
+		putSignatureAccess = func(r *http.Request) []auth.Access {
+			return []auth.Access{
+				{
+					Resource: auth.Resource{
+						Type: "signature",
+						Name: context.GetStringValue(context.WithVars(app, r), "vars.name"),
+					},
+					Action: "put",
+				},
+			}
+		}
+	)
+	app.RegisterRoute(
+		extensionsRouter.Path("/{name:"+reference.NameRegexp.String()+"}/signatures/{digest:"+reference.DigestRegexp.String()+"}").Methods("GET"),
+		server.SignatureDispatcher,
+		handlers.NameRequired,
+		getSignatureAccess,
+	)
+	app.RegisterRoute(
+		extensionsRouter.Path("/{name:"+reference.NameRegexp.String()+"}/signatures/{digest:"+reference.DigestRegexp.String()+"}").Methods("PUT"),
+		server.SignatureDispatcher,
+		handlers.NameRequired,
+		putSignatureAccess,
+	)
+
+	// Advertise features supported by OpenShift
+	if app.Config.HTTP.Headers == nil {
+		app.Config.HTTP.Headers = http.Header{}
+	}
+	app.Config.HTTP.Headers.Set("X-Registry-Supports-Signatures", "1")
 
 	app.RegisterHealthChecks()
 	handler := alive("/", app)
