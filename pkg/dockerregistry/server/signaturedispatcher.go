@@ -21,8 +21,11 @@ import (
 )
 
 type signature struct {
-	Name    string `json:"name"`
-	Type    string `json:"type"`
+	// Name must be in "sha256:<digest>@signatureName" format
+	Name string `json:"name"`
+	// Type is optional, of not set it will be defaulted to "AtomicImageV1"
+	Type string `json:"type"`
+	// Content contains the base64 encoded GPG signature
 	Content []byte `json:"content"`
 }
 
@@ -46,40 +49,37 @@ var (
 	})
 )
 
-// SignatureDispatcher dispatch the signatures endpoint.
+type signatureHandler struct {
+	ctx       *handlers.Context
+	reference imageapi.DockerImageReference
+}
+
+// SignatureDispatcher handles the GET and PUT requests for signature endpoint.
 func SignatureDispatcher(ctx *handlers.Context, r *http.Request) http.Handler {
-	signatureHandler := &signatureHandler{
-		Context: ctx,
-	}
-	signatureHandler.Reference, _ = imageapi.ParseDockerImageReference(ctxu.GetStringValue(ctx, "vars.name") + "@" + ctxu.GetStringValue(ctx, "vars.digest"))
+	signatureHandler := &signatureHandler{ctx: ctx}
+	signatureHandler.reference, _ = imageapi.ParseDockerImageReference(ctxu.GetStringValue(ctx, "vars.name") + "@" + ctxu.GetStringValue(ctx, "vars.digest"))
 	return gorillahandlers.MethodHandler{
 		"GET": http.HandlerFunc(signatureHandler.Get),
 		"PUT": http.HandlerFunc(signatureHandler.Put),
 	}
 }
 
-type signatureHandler struct {
-	Context   *handlers.Context
-	Reference imageapi.DockerImageReference
-}
-
 func (s *signatureHandler) Put(w http.ResponseWriter, r *http.Request) {
-	context.GetLogger(s.Context).Debugf("(*signatureHandler).Put")
-	client, ok := UserClientFrom(s.Context)
+	context.GetLogger(s.ctx).Debugf("(*signatureHandler).Put")
+	client, ok := UserClientFrom(s.ctx)
 	if !ok {
-		s.handleError(s.Context, errcode.ErrorCodeUnknown.WithDetail("unable to get origin client"), w)
+		s.handleError(s.ctx, errcode.ErrorCodeUnknown.WithDetail("unable to get origin client"), w)
 		return
 	}
 
 	sig := signature{}
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		s.handleError(s.Context, ErrorCodeSignatureInvalid.WithDetail(err.Error()), w)
+		s.handleError(s.ctx, ErrorCodeSignatureInvalid.WithDetail(err.Error()), w)
 		return
 	}
-	context.GetLogger(s.Context).Debugf("(*signatureHandler).Put: %s", string(body))
 	if err := json.Unmarshal(body, &sig); err != nil {
-		s.handleError(s.Context, ErrorCodeSignatureInvalid.WithDetail(err.Error()), w)
+		s.handleError(s.ctx, ErrorCodeSignatureInvalid.WithDetail(err.Error()), w)
 		return
 	}
 
@@ -92,50 +92,53 @@ func (s *signatureHandler) Put(w http.ResponseWriter, r *http.Request) {
 	if _, err := client.ImageSignatures().Create(newSig); err != nil {
 		switch {
 		case kapierrors.IsUnauthorized(err):
-			s.handleError(s.Context, errcode.ErrorCodeUnauthorized.WithDetail(err.Error()), w)
+			s.handleError(s.ctx, errcode.ErrorCodeUnauthorized.WithDetail(err.Error()), w)
 		case kapierrors.IsBadRequest(err):
-			s.handleError(s.Context, ErrorCodeSignatureInvalid.WithDetail(err.Error()), w)
+			s.handleError(s.ctx, ErrorCodeSignatureInvalid.WithDetail(err.Error()), w)
 		case kapierrors.IsNotFound(err):
 			w.WriteHeader(http.StatusNotFound)
 		case kapierrors.IsAlreadyExists(err):
-			s.handleError(s.Context, ErrorCodeSignatureAlreadyExists.WithDetail(err.Error()), w)
+			s.handleError(s.ctx, ErrorCodeSignatureAlreadyExists.WithDetail(err.Error()), w)
 		default:
-			s.handleError(s.Context, errcode.ErrorCodeUnknown.WithDetail(fmt.Sprintf("unable to create image %q signature: %v", s.Reference.String(), err)), w)
+			s.handleError(s.ctx, errcode.ErrorCodeUnknown.WithDetail(fmt.Sprintf("unable to create image %q signature: %v", s.reference.String(), err)), w)
 		}
 		return
 	}
 
+	// Return just 201 with no body.
+	// TODO: The docker registry actually returns the Location header
 	w.WriteHeader(http.StatusCreated)
 }
 
 func (s *signatureHandler) Get(w http.ResponseWriter, req *http.Request) {
-	context.GetLogger(s.Context).Debugf("(*signatureHandler).Get")
+	context.GetLogger(s.ctx).Debugf("(*signatureHandler).Get")
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-	client, ok := UserClientFrom(s.Context)
+	client, ok := UserClientFrom(s.ctx)
 	if !ok {
-		s.handleError(s.Context, errcode.ErrorCodeUnknown.WithDetail("unable to get origin client"), w)
+		s.handleError(s.ctx, errcode.ErrorCodeUnknown.WithDetail("unable to get origin client"), w)
 		return
 	}
 
-	if len(s.Reference.Namespace) == 0 || len(s.Reference.Name) == 0 || len(s.Reference.ID) == 0 {
-		s.handleError(s.Context, v2.ErrorCodeNameInvalid.WithDetail("invalid image format"), w)
+	if len(s.reference.ID) == 0 {
+		s.handleError(s.ctx, v2.ErrorCodeNameInvalid.WithDetail("the image ID must be specified (sha256:<digest>"), w)
 		return
 	}
 
-	image, err := client.ImageStreamImages(s.Reference.Namespace).Get(s.Reference.Name, s.Reference.ID)
+	image, err := client.ImageStreamImages(s.reference.Namespace).Get(s.reference.Name, s.reference.ID)
 	if err != nil {
 		switch {
 		case kapierrors.IsUnauthorized(err):
-			s.handleError(s.Context, errcode.ErrorCodeUnauthorized.WithDetail(fmt.Sprintf("not authorized to get image %q signature: %v", s.Reference.String(), err)), w)
+			s.handleError(s.ctx, errcode.ErrorCodeUnauthorized.WithDetail(fmt.Sprintf("not authorized to get image %q signature: %v", s.reference.String(), err)), w)
 		case kapierrors.IsNotFound(err):
 			w.WriteHeader(http.StatusNotFound)
 		default:
-			s.handleError(s.Context, errcode.ErrorCodeUnknown.WithDetail(fmt.Sprintf("unable to get image %q signature: %v", s.Reference.String(), err)), w)
+			s.handleError(s.ctx, errcode.ErrorCodeUnknown.WithDetail(fmt.Sprintf("unable to get image %q signature: %v", s.reference.String(), err)), w)
 		}
 		return
 	}
 
+	// Transform the OpenShift ImageSignature into Registry signature object.
 	signatures := signatureList{Signatures: []signature{}}
 	for _, s := range image.Image.Signatures {
 		signatures.Signatures = append(signatures.Signatures, signature{
@@ -146,7 +149,7 @@ func (s *signatureHandler) Get(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if data, err := json.Marshal(signatures); err != nil {
-		s.handleError(s.Context, errcode.ErrorCodeUnknown.WithDetail(fmt.Sprintf("failed to serialize image signature %v", err)), w)
+		s.handleError(s.ctx, errcode.ErrorCodeUnknown.WithDetail(fmt.Sprintf("failed to serialize image signature %v", err)), w)
 	} else {
 		w.Write(data)
 	}
