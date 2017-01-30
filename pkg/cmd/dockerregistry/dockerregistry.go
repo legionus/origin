@@ -39,6 +39,7 @@ import (
 	"github.com/openshift/origin/pkg/cmd/server/crypto"
 	"github.com/openshift/origin/pkg/dockerregistry/server"
 	"github.com/openshift/origin/pkg/dockerregistry/server/audit"
+	"github.com/openshift/origin/pkg/dockerregistry/server/metrics"
 )
 
 // Execute runs the Docker registry.
@@ -103,6 +104,9 @@ func Execute(configFile io.Reader) {
 	// signatures.
 	server.RegisterSignatureHandler(app)
 
+	// Registry extensions endpoint provides prometheus metrics.
+	server.RegisterMetricHandler(app)
+
 	// Advertise features supported by OpenShift
 	if app.Config.HTTP.Headers == nil {
 		app.Config.HTTP.Headers = http.Header{}
@@ -114,6 +118,7 @@ func Execute(configFile io.Reader) {
 	// TODO: temporarily keep for backwards compatibility; remove in the future
 	handler = alive("/healthz", handler)
 	handler = health.Handler(handler)
+	handler = metrics.Handler(handler)
 	handler = panicHandler(handler)
 	handler = gorillahandlers.CombinedLoggingHandler(os.Stdout, handler)
 

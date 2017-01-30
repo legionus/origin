@@ -232,6 +232,7 @@ func (r *repository) Manifests(ctx context.Context, options ...distribution.Mani
 	if audit.LoggerExists(ctx) {
 		ms = &auditManifestService{
 			manifests: ms,
+			repo:      r,
 		}
 	}
 
@@ -271,6 +272,7 @@ func (r *repository) Blobs(ctx context.Context) distribution.BlobStore {
 	if audit.LoggerExists(ctx) {
 		bs = &auditBlobStore{
 			store: bs,
+			repo:  &repo,
 		}
 	}
 
@@ -294,6 +296,7 @@ func (r *repository) Tags(ctx context.Context) distribution.TagService {
 	if audit.LoggerExists(ctx) {
 		ts = &auditTagService{
 			tags: ts,
+			repo: r,
 		}
 	}
 
