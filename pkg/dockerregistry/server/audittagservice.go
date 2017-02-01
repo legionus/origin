@@ -18,7 +18,8 @@ type auditTagService struct {
 var _ distribution.TagService = &auditTagService{}
 
 func (t *auditTagService) Get(ctx context.Context, tag string) (distribution.Descriptor, error) {
-	defer metrics.NewTimer(metrics.RequestDurationSummary, []string{"tagservice.get", t.repo.Named().Name()}).Stop()
+	ns := t.repo.Named().Name()
+	defer metrics.NewNSTimer(ns, metrics.RequestDurationSummaryName, []string{"tagservice.get", ns}).Stop()
 
 	audit.GetLogger(ctx).Log("TagService.Get")
 	desc, err := t.tags.Get(ctx, tag)
@@ -27,7 +28,8 @@ func (t *auditTagService) Get(ctx context.Context, tag string) (distribution.Des
 }
 
 func (t *auditTagService) Tag(ctx context.Context, tag string, desc distribution.Descriptor) error {
-	defer metrics.NewTimer(metrics.RequestDurationSummary, []string{"tagservice.tag", t.repo.Named().Name()}).Stop()
+	ns := t.repo.Named().Name()
+	defer metrics.NewNSTimer(ns, metrics.RequestDurationSummaryName, []string{"tagservice.tag", ns}).Stop()
 
 	audit.GetLogger(ctx).Log("TagService.Tag")
 	err := t.tags.Tag(ctx, tag, desc)
@@ -36,7 +38,8 @@ func (t *auditTagService) Tag(ctx context.Context, tag string, desc distribution
 }
 
 func (t *auditTagService) Untag(ctx context.Context, tag string) error {
-	defer metrics.NewTimer(metrics.RequestDurationSummary, []string{"tagservice.untag", t.repo.Named().Name()}).Stop()
+	ns := t.repo.Named().Name()
+	defer metrics.NewNSTimer(ns, metrics.RequestDurationSummaryName, []string{"tagservice.untag", ns}).Stop()
 
 	audit.GetLogger(ctx).Log("TagService.Untag")
 	err := t.tags.Untag(ctx, tag)
@@ -45,7 +48,8 @@ func (t *auditTagService) Untag(ctx context.Context, tag string) error {
 }
 
 func (t *auditTagService) All(ctx context.Context) ([]string, error) {
-	defer metrics.NewTimer(metrics.RequestDurationSummary, []string{"tagservice.all", t.repo.Named().Name()}).Stop()
+	ns := t.repo.Named().Name()
+	defer metrics.NewNSTimer(ns, metrics.RequestDurationSummaryName, []string{"tagservice.all", ns}).Stop()
 
 	audit.GetLogger(ctx).Log("TagService.All")
 	list, err := t.tags.All(ctx)
@@ -54,7 +58,8 @@ func (t *auditTagService) All(ctx context.Context) ([]string, error) {
 }
 
 func (t *auditTagService) Lookup(ctx context.Context, digest distribution.Descriptor) ([]string, error) {
-	defer metrics.NewTimer(metrics.RequestDurationSummary, []string{"tagservice.lookup", t.repo.Named().Name()}).Stop()
+	ns := t.repo.Named().Name()
+	defer metrics.NewNSTimer(ns, metrics.RequestDurationSummaryName, []string{"tagservice.lookup", ns}).Stop()
 
 	audit.GetLogger(ctx).Log("TagService.Lookup")
 	list, err := t.tags.Lookup(ctx, digest)

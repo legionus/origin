@@ -19,7 +19,8 @@ type auditManifestService struct {
 var _ distribution.ManifestService = &auditManifestService{}
 
 func (m *auditManifestService) Exists(ctx context.Context, dgst digest.Digest) (bool, error) {
-	defer metrics.NewTimer(metrics.RequestDurationSummary, []string{"manifestservice.exists", m.repo.Named().Name()}).Stop()
+	ns := m.repo.Named().Name()
+	defer metrics.NewNSTimer(ns, metrics.RequestDurationSummaryName, []string{"manifestservice.exists", ns}).Stop()
 
 	audit.GetLogger(ctx).Log("ManifestService.Exists")
 	exists, err := m.manifests.Exists(ctx, dgst)
@@ -28,7 +29,8 @@ func (m *auditManifestService) Exists(ctx context.Context, dgst digest.Digest) (
 }
 
 func (m *auditManifestService) Get(ctx context.Context, dgst digest.Digest, options ...distribution.ManifestServiceOption) (distribution.Manifest, error) {
-	defer metrics.NewTimer(metrics.RequestDurationSummary, []string{"manifestservice.get", m.repo.Named().Name()}).Stop()
+	ns := m.repo.Named().Name()
+	defer metrics.NewNSTimer(ns, metrics.RequestDurationSummaryName, []string{"manifestservice.get", ns}).Stop()
 
 	audit.GetLogger(ctx).Log("ManifestService.Get")
 	manifest, err := m.manifests.Get(ctx, dgst, options...)
@@ -37,7 +39,8 @@ func (m *auditManifestService) Get(ctx context.Context, dgst digest.Digest, opti
 }
 
 func (m *auditManifestService) Put(ctx context.Context, manifest distribution.Manifest, options ...distribution.ManifestServiceOption) (digest.Digest, error) {
-	defer metrics.NewTimer(metrics.RequestDurationSummary, []string{"manifestservice.put", m.repo.Named().Name()}).Stop()
+	ns := m.repo.Named().Name()
+	defer metrics.NewNSTimer(ns, metrics.RequestDurationSummaryName, []string{"manifestservice.put", ns}).Stop()
 
 	audit.GetLogger(ctx).Log("ManifestService.Put")
 	dgst, err := m.manifests.Put(ctx, manifest, options...)
@@ -46,7 +49,8 @@ func (m *auditManifestService) Put(ctx context.Context, manifest distribution.Ma
 }
 
 func (m *auditManifestService) Delete(ctx context.Context, dgst digest.Digest) error {
-	defer metrics.NewTimer(metrics.RequestDurationSummary, []string{"manifestservice.delete", m.repo.Named().Name()}).Stop()
+	ns := m.repo.Named().Name()
+	defer metrics.NewNSTimer(ns, metrics.RequestDurationSummaryName, []string{"manifestservice.delete", ns}).Stop()
 
 	audit.GetLogger(ctx).Log("ManifestService.Delete")
 	err := m.manifests.Delete(ctx, dgst)
