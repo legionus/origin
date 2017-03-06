@@ -31,6 +31,8 @@ const (
 	// remoteBlobAccessCheckEnabledKey allows blobDescriptorService to stat remote blobs which is useful only
 	// in case of manifest verification.
 	remoteBlobAccessCheckEnabledKey = "openshift.remote.blobaccesscheck.enabled"
+
+	blobDescriptorServiceOptionsKey = "openshift.blob.descriptor.service.options"
 )
 
 func WithRepository(parent context.Context, repo *repository) context.Context {
@@ -38,6 +40,14 @@ func WithRepository(parent context.Context, repo *repository) context.Context {
 }
 func RepositoryFrom(ctx context.Context) (repo *repository, found bool) {
 	repo, found = ctx.Value(repositoryKey).(*repository)
+	return
+}
+
+func WithBlobDescriptorServiceOptions(parent context.Context, opts *blobDescriptorServiceOptions) context.Context {
+	return context.WithValue(parent, blobDescriptorServiceOptionsKey, opts)
+}
+func BlobDescriptorServiceOptionsFrom(ctx context.Context) (opts *blobDescriptorServiceOptions, found bool) {
+	opts, found = ctx.Value(blobDescriptorServiceOptionsKey).(*blobDescriptorServiceOptions)
 	return
 }
 

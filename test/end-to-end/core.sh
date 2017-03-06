@@ -125,6 +125,8 @@ os::cmd::try_until_text "oc get build/busybox-1 -o 'jsonpath={.status.phase}'" '
 os::cmd::expect_success_and_text "oc get build/busybox-1 -o 'jsonpath={.status.phase}'" 'Complete'
 os::cmd::expect_success "oc get istag/busybox:latest"
 
+exit
+
 os::log::info "Restore registry mirroring"
 os::cmd::expect_success "oc project '${CLUSTER_ADMIN_CONTEXT}'"
 os::cmd::expect_success 'oc env -n default dc/docker-registry REGISTRY_MIDDLEWARE_REPOSITORY_OPENSHIFT_MIRRORPULLTHROUGH=true'

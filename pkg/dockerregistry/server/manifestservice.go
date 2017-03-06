@@ -99,6 +99,8 @@ func (m *manifestService) Get(ctx context.Context, dgst digest.Digest, options .
 func (m *manifestService) Put(ctx context.Context, manifest distribution.Manifest, options ...distribution.ManifestServiceOption) (digest.Digest, error) {
 	context.GetLogger(ctx).Debugf("(*manifestService).Put")
 
+	m.repo.blobDescriptorOptions.RemoteEnabled = true
+
 	mh, err := NewManifestHandler(m.repo, manifest)
 	if err != nil {
 		return "", regapi.ErrorCodeManifestInvalid.WithDetail(err)

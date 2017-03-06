@@ -13,7 +13,7 @@ import (
 	"github.com/docker/distribution/manifest/schema2"
 	"github.com/docker/distribution/registry/api/errcode"
 	repomw "github.com/docker/distribution/registry/middleware/repository"
-	registrystorage "github.com/docker/distribution/registry/storage"
+	//registrystorage "github.com/docker/distribution/registry/storage"
 
 	kerrors "k8s.io/kubernetes/pkg/api/errors"
 	kcoreclient "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset/typed/core/internalversion"
@@ -122,6 +122,10 @@ func init() {
 	}
 }
 
+type blobDescriptorServiceOptions struct {
+	RemoteEnabled bool
+}
+
 // repository wraps a distribution.Repository and allows manifests to be served from the OpenShift image
 // API.
 type repository struct {
@@ -154,6 +158,8 @@ type repository struct {
 	cachedLayers digestToRepositoryCache
 	// remoteBlobGetter is used to fetch blobs from remote registries if pullthrough is enabled.
 	remoteBlobGetter BlobGetterService
+
+	blobDescriptorOptions *blobDescriptorServiceOptions
 }
 
 // newRepositoryWithClient returns a new repository middleware.
@@ -217,6 +223,7 @@ func newRepositoryWithClient(
 		imageStreamGetter:      imageStreamGetter,
 		cachedImages:           make(map[digest.Digest]*imageapi.Image),
 		cachedLayers:           cachedLayers,
+		blobDescriptorOptions:  &blobDescriptorServiceOptions{},
 	}
 
 	if pullthrough {
@@ -234,10 +241,12 @@ func newRepositoryWithClient(
 
 // Manifests returns r, which implements distribution.ManifestService.
 func (r *repository) Manifests(ctx context.Context, options ...distribution.ManifestServiceOption) (distribution.ManifestService, error) {
+	ctx = WithBlobDescriptorServiceOptions(ctx, r.blobDescriptorOptions)
+
 	// we do a verification of our own
 	// TODO: let upstream do the verification once they pass correct context object to their manifest handler
-	opts := append(options, registrystorage.SkipLayerVerification())
-	ms, err := r.Repository.Manifests(WithRepository(ctx, r), opts...)
+	//opts := append(options, registrystorage.SkipLayerVerification())
+	ms, err := r.Repository.Manifests(WithRepository(ctx, r), options...)
 	if err != nil {
 		return nil, err
 	}

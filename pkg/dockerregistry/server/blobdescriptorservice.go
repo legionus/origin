@@ -61,6 +61,14 @@ func (bs *blobDescriptorService) Stat(ctx context.Context, dgst digest.Digest) (
 		return distribution.Descriptor{}, err
 	}
 
+	opts, ok := BlobDescriptorServiceOptionsFrom(ctx)
+	if ok {
+		context.GetLogger(ctx).Debugf("(*blobDescriptorService).Stat: BlobDescriptorServiceOptions found")
+		if opts.RemoteEnabled {
+			context.GetLogger(ctx).Debugf("(*blobDescriptorService).Stat: BlobDescriptorServiceOptions RemoteEnabled==true")
+		}
+	}
+
 	// if there is a repo layer link, return its descriptor
 	desc, err := bs.BlobDescriptorService.Stat(ctx, dgst)
 	if err == nil {
