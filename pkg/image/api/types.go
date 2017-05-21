@@ -25,6 +25,10 @@ const (
 	// InsecureRepositoryAnnotation may be set true on an image stream to allow insecure access to pull content.
 	InsecureRepositoryAnnotation = "openshift.io/image.insecureRepository"
 
+	// NotRedistributableImageAnnotation indicates that an image can be served only from remote registries.
+	// Either via redirect or pullthrough.
+	NotRedistributableImageAnnotation = "openshift.io/image.notRedistributable"
+
 	// ExcludeImageSecretAnnotation indicates that a secret should not be returned by imagestream/secrets.
 	ExcludeImageSecretAnnotation = "openshift.io/image.excludeSecret"
 
@@ -247,6 +251,8 @@ type TagImportPolicy struct {
 	Insecure bool
 	// Scheduled indicates to the server that this tag should be periodically checked to ensure it is up to date, and imported
 	Scheduled bool
+	// NotRedistributable is true if image should be served only by remote registry.
+	NotRedistributable bool
 }
 
 // TagReferencePolicyType describes how pull-specs for images in an image stream tag are generated when

@@ -191,6 +191,8 @@ type TagImportPolicy struct {
 	Insecure bool `json:"insecure,omitempty" protobuf:"varint,1,opt,name=insecure"`
 	// Scheduled indicates to the server that this tag should be periodically checked to ensure it is up to date, and imported
 	Scheduled bool `json:"scheduled,omitempty" protobuf:"varint,2,opt,name=scheduled"`
+	// NotRedistributable is true if image should be served only by remote registry.
+	NotRedistributable bool `json:"notredistribute,omitempty" protobuf:"varint,3,opt,name=notredistribute"`
 }
 
 // TagReferencePolicyType describes how pull-specs for images in an image stream tag are generated when

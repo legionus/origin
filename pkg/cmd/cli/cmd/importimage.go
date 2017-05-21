@@ -53,6 +53,7 @@ func NewCmdImportImage(fullName string, f *clientcmd.Factory, out, errout io.Wri
 	cmd.Flags().BoolVar(&opts.Confirm, "confirm", false, "If true, allow the image stream import location to be set or changed")
 	cmd.Flags().BoolVar(&opts.All, "all", false, "If true, import all tags from the provided source on creation or if --from is specified")
 	cmd.Flags().StringVar(&opts.ReferencePolicy, "reference-policy", sourceReferencePolicy, "Allow to request pullthrough for external image when set to 'local'. Defaults to 'source'.")
+	cmd.Flags().BoolVar(&opts.NoRedistribute, "no-redistribute", false, "If true, mark image that registry shall not redistribute image layers")
 	opts.Insecure = cmd.Flags().Bool("insecure", false, "If true, allow importing from registries that have invalid HTTPS certificates or are hosted via HTTP. This flag will take precedence over the insecure annotation.")
 
 	return cmd
@@ -61,10 +62,11 @@ func NewCmdImportImage(fullName string, f *clientcmd.Factory, out, errout io.Wri
 // ImageImportOptions contains all the necessary information to perform an import.
 type ImportImageOptions struct {
 	// user set values
-	From     string
-	Confirm  bool
-	All      bool
-	Insecure *bool
+	From           string
+	Confirm        bool
+	All            bool
+	NoRedistribute bool
+	Insecure       *bool
 
 	// internal values
 	Namespace       string
@@ -503,7 +505,10 @@ func (o *ImportImageOptions) newImageStreamImportAll(stream *imageapi.ImageStrea
 			Kind: "DockerImage",
 			Name: from,
 		},
-		ImportPolicy:    imageapi.TagImportPolicy{Insecure: insecure},
+		ImportPolicy:    imageapi.TagImportPolicy{
+			Insecure:           insecure,
+			NotRedistributable: o.NoRedistribute,
+		},
 		ReferencePolicy: o.getReferencePolicy(),
 	}
 
@@ -519,7 +524,10 @@ func (o *ImportImageOptions) newImageStreamImportTags(stream *imageapi.ImageStre
 				Name: from,
 			},
 			To:              &kapi.LocalObjectReference{Name: tag},
-			ImportPolicy:    imageapi.TagImportPolicy{Insecure: insecure},
+			ImportPolicy:    imageapi.TagImportPolicy{
+				Insecure:           insecure,
+				NotRedistributable: o.NoRedistribute,
+			},
 			ReferencePolicy: o.getReferencePolicy(),
 		})
 	}

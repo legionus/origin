@@ -65,11 +65,16 @@ func (pbs *pullthroughBlobStore) ServeBlob(ctx context.Context, w http.ResponseW
 		return err
 	}
 
+	image, _, err := pbs.repo.getImageOfImageStream(dgst)
+	if err != nil {
+		return err
+	}
+
 	remoteGetter := pbs.repo.remoteBlobGetter
 
 	// store the content locally if requested, but ensure only one instance at a time
 	// is storing to avoid excessive local writes
-	if pbs.mirror {
+	if pbs.mirror && !isDistributableImage(image) {
 		mu.Lock()
 		if _, ok := inflight[dgst]; ok {
 			mu.Unlock()

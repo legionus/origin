@@ -137,6 +137,11 @@ func isImageManaged(image *imageapi.Image) bool {
 	return ok && managed == "true"
 }
 
+func isDistributableImage(image *imageapi.Image) bool {
+	value, ok := image.ObjectMeta.Annotations[imageapi.NotRedistributableImageAnnotation]
+	return !ok || value != "true"
+}
+
 // wrapKStatusErrorOnGetImage transforms the given kubernetes status error into a distribution one. Upstream
 // handler do not allow us to propagate custom error messages except for ErrManifetUnknownRevision. All the
 // other errors will result in an internal server error with details made out of returned error.

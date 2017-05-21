@@ -133,10 +133,11 @@ func (i *ImageStreamImporter) importImages(ctx gocontext.Context, retriever Repo
 		repo, ok := repositories[key]
 		if !ok {
 			repo = &importRepository{
-				Ref:      ref,
-				Registry: &key.url,
-				Name:     key.name,
-				Insecure: spec.ImportPolicy.Insecure,
+				Ref:                ref,
+				Registry:           &key.url,
+				Name:               key.name,
+				Insecure:           spec.ImportPolicy.Insecure,
+				NotRedistributable: spec.ImportPolicy.NotRedistributable,
 			}
 			repositories[key] = repo
 		}
@@ -249,11 +250,12 @@ func (i *ImageStreamImporter) importFromRepository(ctx gocontext.Context, retrie
 
 	key := repositoryKey{url: *registryURL, name: repoName}
 	repo := &importRepository{
-		Ref:         ref,
-		Registry:    &key.url,
-		Name:        key.name,
-		Insecure:    spec.ImportPolicy.Insecure,
-		MaximumTags: maximumTags,
+		Ref:                ref,
+		Registry:           &key.url,
+		Name:               key.name,
+		Insecure:           spec.ImportPolicy.Insecure,
+		NotRedistributable: spec.ImportPolicy.NotRedistributable,
+		MaximumTags:        maximumTags,
 	}
 	i.importRepositoryFromDocker(ctx, retriever, repo, limiter)
 
@@ -497,6 +499,13 @@ func (isi *ImageStreamImporter) importRepositoryFromDocker(ctx gocontext.Context
 			continue
 		}
 
+		if repository.NotRedistributable {
+			if importDigest.Image.Annotations == nil {
+				importDigest.Image.Annotations = make(map[string]string)
+			}
+			importDigest.Image.Annotations[api.NotRedistributableImageAnnotation] = "true"
+		}
+
 		if err := api.ImageWithMetadata(importDigest.Image); err != nil {
 			importDigest.Err = err
 			continue
@@ -554,6 +563,14 @@ func (isi *ImageStreamImporter) importRepositoryFromDocker(ctx gocontext.Context
 			importTag.Err = err
 			continue
 		}
+
+		if repository.NotRedistributable {
+			if importTag.Image.Annotations == nil {
+				importTag.Image.Annotations = make(map[string]string)
+			}
+			importTag.Image.Annotations[api.NotRedistributableImageAnnotation] = "true"
+		}
+
 		if err := api.ImageWithMetadata(importTag.Image); err != nil {
 			importTag.Err = err
 			continue
@@ -637,6 +654,13 @@ func importRepositoryFromDockerV1(ctx gocontext.Context, repository *importRepos
 			importDigest.Err = err
 			continue
 		}
+
+		if repository.NotRedistributable {
+			if importDigest.Image.Annotations == nil {
+				importDigest.Image.Annotations = make(map[string]string)
+			}
+			importDigest.Image.Annotations[api.NotRedistributableImageAnnotation] = "true"
+		}
 	}
 
 	for i := range repository.Tags {
@@ -656,6 +680,13 @@ func importRepositoryFromDockerV1(ctx gocontext.Context, repository *importRepos
 			importTag.Err = err
 			continue
 		}
+
+		if repository.NotRedistributable {
+			if importTag.Image.Annotations == nil {
+				importTag.Image.Annotations = make(map[string]string)
+			}
+			importTag.Image.Annotations[api.NotRedistributableImageAnnotation] = "true"
+		}
 	}
 }
 
@@ -672,10 +703,11 @@ type importDigest struct {
 }
 
 type importRepository struct {
-	Ref      api.DockerImageReference
-	Registry *url.URL
-	Name     string
-	Insecure bool
+	Ref                api.DockerImageReference
+	Registry           *url.URL
+	Name               string
+	Insecure           bool
+	NotRedistributable bool
 
 	Tags    []importTag
 	Digests []importDigest
